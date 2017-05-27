@@ -88,7 +88,9 @@ Advanced options:
   code or signal+128.  This also makes timeout to wait until the controlled
   process is terminated.  Without this option, the script returns zero.
 
-* `--memlimit-rss`, `-s` - monitor RSS (resident set size) memory limit
+* `--memlimit-rss`, `-s` - monitor RSS (resident set size) memory limit.
+Memory limits may be specified as KB (default), MB, or GB.
+E.g. 900KB, 100MB, 1.2GB
 
 More options may be read in the script itself.  More documentation will be
 added in the future releases!
@@ -108,26 +110,30 @@ EXAMPLES
 Since you already have Perl to run the script itself, the examples will
 utilize it.
 
-Basic time limiting:
+Basic CPU time limiting:
 
     ./timeout -t 2 perl -e 'while ($i<100000000) {$i++;}'
     Outputs:
     TIMEOUT 2.04 CPU
 
-Basic memory limiting (100M of virtual memory):
+Basic memory limiting (100MB of virtual memory):
 
-    ./timeout -m 1000000 perl -e 'while ($i<100000000) {$a->{$i} = $i++;}'
+    ./timeout -m 100MB perl -e 'while ($i<100000000) {$a->{$i} = $i++;}'
     Outputs:
-    MEM 8.55
+    MEM CPU 0.41 MEM 119236 KB 116 MB 0 GB MAXMEM 119236 KB 116 MB 0 GB STALE 0 MAXMEM_RSS 100432 KB 98 MB 0 GB
+    <time name="ALL">440</time>
 
-Limit both time and memory (adjust number to match the command above):
+Limit both CPU time and memory (adjust number to match the command above). Note that the decision to kill the process is based on the logical OR of the limits:
 
-    ./timeout -m 1000000 -t 9 perl -e 'while ($i<100000000) {$x->{$i} = $i++;}'
+    ./timeout -m 100mb -t 2 perl -e 'while ($i<100000000) {$i++;}'
     Outputs:
-    MEM 8.57
-    ./timeout -m 1000000 -t 8 perl -e 'while ($i<100000000) {$x->{$i} = $i++;}'
+    TIMEOUT CPU 2.05 MEM 20552 KB 20 MB 0 GB MAXMEM 20552 KB 20 MB 0 GB STALE 0 MAXMEM_RSS 1748 KB 1 MB 0 GB
+    <time name="ALL">2100</time>
+
+    ./timeout -m 100mb -t 9 perl -e 'while ($i<100000000) {$x->{$i} = $i++;}'
     Outputs:
-    TIMEOUT 8.02 CPU
+    MEM CPU 0.41 MEM 124252 KB 121 MB 0 GB MAXMEM 124252 KB 121 MB 0 GB STALE 0 MAXMEM_RSS 108616 KB 106 MB 0 GB
+    <time name="ALL">440</time>
 
 Limit time with a lot of short child processes:
 
@@ -208,6 +214,3 @@ The script was initially developed in the Institute for System Programming of
 Russian Academy of Sciences (http://ispras.ru/en/) for Linux Driver
 Verification project (http://forge.ispras.ru/projects/ldv) in 2010-2011 by
 Pavel Shved with some contributions from Alexander Strakh.
-
-
-

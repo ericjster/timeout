@@ -23,7 +23,10 @@
 
 sub usage{ print STDERR <<usage_ends;
 Usage:
-	timeout [-t timelimit] [-m memlimit] [-x hertz] command [arguments ...]
+	timeout [-t timelimit] [-m memlimit] [-s memlimit-rss] [-x hertz] command [arguments ...]
+
+Memory limits may be specified as KB (default), MB, or GB.
+Example: timeout -memlimit 2.5GB -memlimit-rss 7800MB
 
 usage_ends
 	die;
@@ -61,8 +64,8 @@ GetOptions(
 	'detect-hangups!'=>\$kill_stale,
 	# allow-hangups is kept for backward compatibility.
 	'allow-hangups!'=>\$kill_stale,
-	'memlimit|m=i'=>\$memlimit,
-	'memlimit-rss|s=i'=>\$memlimit_rss,
+	'memlimit|m=s'=>\$memlimit,
+	'memlimit-rss|s=s'=>\$memlimit_rss,
 	'frequency|x=i'=>\$frequency,
 	'pattern|p=s'=>\$strpat,
 	'output|o=s'=>\$output,
@@ -75,6 +78,9 @@ GetOptions(
 ) or usage;
 
 @ARGV or usage;
+
+$memlimit = parse_memory_arg($memlimit);
+$memlimit_rss = parse_memory_arg($memlimit_rss);
 
 my $uinfo = get_patterns($strpat);
 
@@ -446,7 +452,7 @@ sub print_uinfo
 	my $reason = shift;
 	# Print generic information to STDERR
 	my $ticks = $timeinfo->{ticks_stale} || 0;
-	printf STDERR "${id_str}%s CPU %.2f MEM %d MAXMEM %d STALE %d MAXMEM_RSS %d\n", $reason, $timeinfo->{total}, $meminfo, $maxmem, ceil($ticks/$frequency), $maxmem_rss if ($reason ne 'FINISHED') || $info_on_success;
+	printf STDERR "${id_str}%s CPU %.2f MEM %d KB %d MB %d GB MAXMEM %d KB %d MB %d GB STALE %d MAXMEM_RSS %d KB %d MB %d GB\n", $reason, $timeinfo->{total}, $meminfo, $meminfo/1024, $meminfo/1024/1024, $maxmem, $maxmem/1024, $maxmem/1024/1024, ceil($ticks/$frequency), $maxmem_rss, $maxmem_rss/1024, $maxmem_rss/1024/1024 if ($reason ne 'FINISHED') || $info_on_success;
 
 	if (defined $output){
 		open(FIL,">>", $output) or die "Can't open output file: $!\n";
@@ -515,4 +521,26 @@ sub child_status_to_exit_code
 		# This is also executed when there was no error, and the result is zero.
 		return $child_retv >> 8;
 	}
+}
+
+# Allow memory arguments to specified as bytes, KB, MB, or GB.
+sub parse_memory_arg
+{
+	my ($mem) = @_;
+	if (defined($mem)) {
+		if ($mem =~ /^\d+$/) {
+			$mem = int($mem);
+		} elsif ($mem =~ /(^\d*\.{0,1}\d*)kb$/i) {
+			$mem = int($1);
+		} elsif ($mem =~ /(^\d*\.{0,1}\d*)mb$/i) {
+			$mem = int($1*1024);
+		} elsif ($mem =~ /(^\d*\.{0,1}\d*)gb$/i) {
+			$mem = int($1*1024*1024);
+		} else {
+			print STDERR "Error: Unrecognized memory argument: '$mem'.\n";
+			usage();
+		}
+		printf STDERR "mem : %d KB = %.1f MB = %.1f GB\n", $mem, $mem/1024., $mem/1024./1024. if $debug;
+	}
+	return $mem;
 }
